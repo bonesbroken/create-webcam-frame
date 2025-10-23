@@ -20,16 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('Loaded settings from query string:', settings);
                     
                     // Load Rive file with custom settings
-                    riveInstance = loadWebcamRiveFile(canvas, settings);
+                    riveInstance = loadWebcamRiveFile(canvas, settings, true);
                 } catch (err) {
                     console.error('Failed to parse settings from query string', err);
                     // Fallback to default settings
-                    riveInstance = loadWebcamRiveFile(canvas, defaultWebcamFrameSettings());
+                    riveInstance = loadWebcamRiveFile(canvas, defaultWebcamFrameSettings(), true);
                 }
             }
         });
     } else {
         // Load Rive file with default settings
-        riveInstance = loadWebcamRiveFile(canvas, defaultWebcamFrameSettings());
+        riveInstance = loadWebcamRiveFile(canvas, defaultWebcamFrameSettings(), true);
     }
 });

@@ -1,20 +1,24 @@
 import $ from "jquery";
 import { Rive } from "@rive-app/webgl2";
-import rectangleFrame from "../rive/rectangle-frame.riv";
+import webcamFrame from "../rive/webcam-frame.riv";
 
 export const defaultWebcamFrameSettings = () => ({
-    "sourceType": "webcam",
     "shape": "rectangle",
     "aspectRatio": "16:9",
     'rotation': 0,
     'borderRadius': 10,
-    'color': '#ff0000',
-    'strokeWidth': 5
+    'outerRadius': 50,
+    'color': '#9cbcfa',
+    'strokeWidth': 45,
+    'points': 5,
+    'fillColor': '#101026'
 });
 
-export function loadWebcamRiveFile(canvas, settings) {
+export function loadWebcamRiveFile(canvas, settings, transparent = false) {
+    // Select the appropriate Rive file based on the shape
+
     let riveInstance = new Rive({
-        src: rectangleFrame,
+        src: webcamFrame,
         stateMachines: "State Machine 1",
         canvas: canvas,
         // layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
@@ -23,40 +27,56 @@ export function loadWebcamRiveFile(canvas, settings) {
         autoBind: true,
         onLoad: () => {
             riveInstance.resizeDrawingSurfaceToCanvas();
-            updateRiveProperties(riveInstance, settings);
+            updateRiveProperties(riveInstance, settings, transparent);
         }
     });
 
     return riveInstance;
 }
 
-export function updateRiveProperties(instance, settings) {
+export function updateRiveProperties(instance, settings, transparent = false) {
     // Update the Rive viewmodel properties with current settings
     if (instance && instance.viewModelInstance) {
         // Update Rive properties based on settings
         const vmi = instance.viewModelInstance;
         instance.viewModelInstance.properties.forEach(input => {
-            if (input.name === 'rotation' && settings.rotation !== undefined) {
-                vmi.number(input.name).value = settings[input.name];
+            if (input.name === 'rotation' && settings['rotation'] !== undefined) {
+                vmi.number('rotation').value = settings['rotation'];
             }
-            if (input.name === 'borderRadius' && settings.borderRadius !== undefined) {
-                vmi.number(input.name).value = settings[input.name];
+            if (input.name === 'borderRadius' && settings['borderRadius'] !== undefined) {
+                vmi.number('borderRadius').value = settings['borderRadius'];
             }
-            if (input.name === 'strokeWidth' && settings.strokeWidth !== undefined) {
-                vmi.number(input.name).value = settings[input.name];
+            if (input.name === 'points' && settings['points'] !== undefined) {
+                vmi.number('points').value = settings['points'];
             }
-            if (input.name === 'color' && settings.color !== undefined) {
-                vmi.color(input.name).value = hexToArgbInt(settings[input.name]);
+            if (input.name === 'outerRadius' && settings['outerRadius'] !== undefined) {
+                vmi.number('outerRadius').value = settings['outerRadius'];
             }
-            if (input.name === 'Enum property' && settings['aspectRatio'] !== undefined) {
-                vmi.enum(input.name).value = settings['aspectRatio'];
+            if (input.name === 'strokeWidth' && settings['strokeWidth'] !== undefined) {
+                vmi.number('strokeWidth').value = settings['strokeWidth'];
+            }
+            if (input.name === 'color' && settings['color'] !== undefined) {
+                vmi.color('color').value = hexToArgbInt(settings['color']);
+            }
+            if (input.name === 'fillColor' && settings['fillColor'] !== undefined) {
+                if(transparent) {
+                    vmi.color('fillColor').value = hexToArgbInt(settings['fillColor'], 0x00);
+                } else {
+                    vmi.color('fillColor').value = hexToArgbInt(settings['fillColor']);
+                }
+            }
+            if (input.name === 'aspectRatio' && settings['aspectRatio'] !== undefined) {
+                vmi.enum('aspectRatio').value = settings['aspectRatio'];
+            }
+            if (input.name === 'shape' && settings['shape'] !== undefined) {
+                vmi.enum('shape').value = settings['shape'];
             }
         });
         
     }
 }
 
-function hexToArgbInt(hex, alpha = 0xFF) {
+export function hexToArgbInt(hex, alpha = 0xFF) {
     const h = String(hex || '').replace(/^#/, '').trim();
     let r = 255, g = 255, b = 255, a = alpha & 0xFF;
     if (h.length === 3) {

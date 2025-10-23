@@ -24,11 +24,11 @@ let existingSource;
 
 // Wizard state
 let currentStep = 1;
-let selectedType = null;
-const totalSteps = 3;
+let selectedShape = null;
+const totalSteps = 2;
 
-// Make selectedType globally accessible
-window.selectedType = null;
+// Make selectedShape globally accessible
+window.selectedShape = null;
 
 // Scene selection state
 let availableScenes = [];
@@ -89,13 +89,11 @@ function safeUpdateRiveProperties(settings) {
 
 // Helper function to recreate Rive instance
 function recreateRiveInstance() {
-    if (selectedType !== 'webcam') return;
-    
     // Find the currently visible canvas
     let targetCanvas = null;
     
-    if (currentStep === 3) {
-        targetCanvas = document.getElementById('webcamCanvasStep3');
+    if (currentStep === 2) {
+        targetCanvas = document.getElementById('webcamCanvasStep2');
         if (!targetCanvas || targetCanvas.style.display === 'none' || !targetCanvas.offsetParent) {
             targetCanvas = null;
         }
@@ -136,15 +134,6 @@ function cleanupAllRiveInstances() {
     riveInstances = [];
 }
 
-// Helper function to get current settings based on selected type
-function getCurrentSettings() {
-    return webcamSettings;
-}
-
-// Helper function to update current settings based on selected type
-function updateCurrentSettings(newSettings) {
-    webcamSettings = { ...webcamSettings, ...newSettings };
-}
 
 async function loadShoelaceElements() {
     await Promise.allSettled([
@@ -202,8 +191,8 @@ async function initApp() {
                         updateUI(webcamSettings, 'existing');
                         
                         // Take existing sources to step 2 for quick editing
-                        selectedType = 'webcam'; // Default type for existing sources
-                        window.selectedType = selectedType; // Update global reference
+                        selectedShape = webcamSettings['shape']; // Default shape for existing sources
+                        window.selectedShape = selectedShape; // Update global reference
                         goToStep(2);
                     }
                 });  
@@ -222,13 +211,42 @@ async function initApp() {
 
 function updateUI(settings, newSource) {
     if (!settings) return;
+    $('#color').val(settings["color"] || webcamSettings["color"]);
+    $('#colorInput').val(settings["color"] || webcamSettings["color"]);
+    $('#strokeWidth').val(Number(settings["strokeWidth"] || webcamSettings["strokeWidth"]));
 
-    $('#rotation').val(Number(settings["rotation"]));
-    $('#borderRadius').val(Number(settings["borderRadius"]));
-    $('#strokeWidth').val(Number(settings["strokeWidth"] || 2));
-    $('#aspectRatio').val(settings["aspectRatio"]);
-    $('#color').val(settings["color"]);
-    $('#colorInput').val(settings["color"]);
+    $('#rotation').val(Number(settings["rotation"] || webcamSettings["rotation"]));
+    $('#borderRadius').val(Number(settings["borderRadius"] || webcamSettings["borderRadius"]));
+    $('#outerRadius').val(Number(settings["outerRadius"] || webcamSettings["outerRadius"]));
+    $('#points').val(Number(settings["points"] || webcamSettings["points"]));
+    $('#aspectRatio').val(settings["aspectRatio"] || webcamSettings["aspectRatio"]);
+
+    // Hide/show settings based on shape
+    if (settings.shape === 'rectangle') {
+        $('#aspectRatio').closest('.setting-group').show();
+        $('#rotation').closest('.setting-group').show();
+        $('#borderRadius').closest('.setting-group').show();
+        $('#outerRadius').closest('.setting-group').hide();
+        $('#points').closest('.setting-group').hide();
+    } else if (settings.shape === 'circle') {
+        $('#aspectRatio').closest('.setting-group').hide();
+        $('#rotation').closest('.setting-group').hide();
+        $('#borderRadius').closest('.setting-group').hide();
+        $('#outerRadius').closest('.setting-group').hide();
+        $('#points').closest('.setting-group').hide();
+    } else if (settings.shape === 'polygon') {
+        $('#aspectRatio').closest('.setting-group').hide();
+        $('#rotation').closest('.setting-group').show();
+        $('#borderRadius').closest('.setting-group').show();
+        $('#outerRadius').closest('.setting-group').hide();
+        $('#points').closest('.setting-group').show();
+    } else if (settings.shape === 'star') {
+        $('#aspectRatio').closest('.setting-group').hide();
+        $('#rotation').closest('.setting-group').show();
+        $('#borderRadius').closest('.setting-group').show();
+        $('#outerRadius').closest('.setting-group').show();
+        $('#points').closest('.setting-group').show();
+    }
 
     if(newSource === 'new') {
         $('#saveAppSource').hide();
@@ -236,9 +254,9 @@ function updateUI(settings, newSource) {
         $('#saveAppSource').show();
     }
     
-    // Update step 3 instructions if currently on step 3
-    if (currentStep === 3) {
-        updateStep3Instructions();
+    // Update step 2 instructions if currently on step 2
+    if (currentStep === 2) {
+        updateStep2Instructions();
     }
 }
 
@@ -247,10 +265,8 @@ $('#color').on('sl-change', event => {
     const val = event.target && event.target.value;
     if (val === undefined) return;
     
-    const currentSettings = getCurrentSettings();
     const fieldId = $(event.target).attr('id');
-    currentSettings[fieldId] = val;
-    updateCurrentSettings({ [fieldId]: val });
+    webcamSettings[fieldId] = val;
     $('#colorInput').val(val);
     // Update Rive viewmodel for webcam
     safeUpdateRiveProperties(webcamSettings);
@@ -270,9 +286,7 @@ $('#colorInput').on('sl-input', event => {
     // Validate hex color format
     if (!/^#[0-9A-Fa-f]{6}$/.test(val) && val !== '') return;
     
-    const currentSettings = getCurrentSettings();
-    currentSettings.color = val;
-    updateCurrentSettings({ color: val });
+    webcamSettings.color = val;
     
     // Also update the color picker to match
     $('#color').val(val);
@@ -299,10 +313,51 @@ $('#borderRadius').on('sl-input', event => {
     const numeric = Number(val);
     if (isNaN(numeric)) return;
     
-    const currentSettings = getCurrentSettings();
-    currentSettings.borderRadius = numeric;
-    updateCurrentSettings({ borderRadius: numeric });
+    webcamSettings.borderRadius = numeric;
     
+    // Update Rive viewmodel for webcam
+    safeUpdateRiveProperties(webcamSettings);
+});
+
+$('#points').off('sl-input');
+$('#points').on('sl-input', event => {
+    const val = event.target && event.target.value;
+    if (val === undefined) return;
+    
+    const numeric = Number(val);
+    if (isNaN(numeric)) return;
+    
+    webcamSettings.points = numeric;
+    
+    // Update Rive viewmodel for webcam
+    safeUpdateRiveProperties(webcamSettings);
+});
+
+// Outer radius input handler
+$('#outerRadius').off('sl-input');
+$('#outerRadius').on('sl-input', event => {
+    const val = event.target && event.target.value;
+    if (val === undefined) return;
+    
+    const numeric = Number(val);
+    if (isNaN(numeric)) return;
+
+    webcamSettings.outerRadius = numeric;
+
+    // Update Rive viewmodel for webcam
+    safeUpdateRiveProperties(webcamSettings);
+});
+
+$('#rotation').off('sl-input');
+$('#rotation').on('sl-input', event => {
+    const val = event.target && event.target.value;
+    if (val === undefined) return;
+    
+    const numeric = Number(val);
+    if (isNaN(numeric)) return;
+
+    webcamSettings.rotation = numeric;
+
     // Update Rive viewmodel for webcam
     safeUpdateRiveProperties(webcamSettings);
 });
@@ -316,9 +371,7 @@ $('#strokeWidth').on('sl-input', event => {
     const numeric = Number(val);
     if (isNaN(numeric)) return;
     
-    const currentSettings = getCurrentSettings();
-    currentSettings.strokeWidth = numeric;
-    updateCurrentSettings({ strokeWidth: numeric });
+    webcamSettings.strokeWidth = numeric;
     
     // Update Rive viewmodel for webcam
     safeUpdateRiveProperties(webcamSettings);
@@ -330,9 +383,7 @@ $('#aspectRatio').on('sl-change', event => {
     const val = event.target && event.target.value;
     if (!val) return;
 
-    const currentSettings = getCurrentSettings();
-    currentSettings["aspectRatio"] = val;
-    updateCurrentSettings({ "aspectRatio": val });
+    webcamSettings["aspectRatio"] = val;
     
     // Update Rive viewmodel for webcam
     safeUpdateRiveProperties(webcamSettings);
@@ -362,9 +413,7 @@ $('input.image-input').on('change', event => {
 
         streamlabs.userSettings.addAssets([ { name: `${selectedFile.name}_${String(selectedFile.lastModified)}`, file: selectedFile } ]).then(result => {
             console.log(result);
-            const currentSettings = getCurrentSettings();
-            currentSettings.customImageUrl = result[`${selectedFile.name}_${String(selectedFile.lastModified)}`];
-            updateCurrentSettings({ customImageUrl: currentSettings.customImageUrl });
+            webcamSettings.customImageUrl = result[`${selectedFile.name}_${String(selectedFile.lastModified)}`];
             
             // Update Rive viewmodel for webcam
             safeUpdateRiveProperties(webcamSettings);
@@ -383,39 +432,17 @@ $(".image-upload").on('click', function(event) {
     inputElem.trigger('click');
 });
 
-
-// Map of field IDs to their display labels
-const fieldLabels = {
-    'rotation': 'Rotation'
-};
-
-$("sl-range").off('sl-change');
-$("sl-range").on('sl-change', event => {
-    const value = event.target && event.target.value;
-    if (value === undefined) return;
-
-    const numeric = Number(value);
-    const fieldId = $(event.target).attr('id');
-    
-    const currentSettings = getCurrentSettings();
-    currentSettings[fieldId] = numeric;
-    updateCurrentSettings({ [fieldId]: numeric });
-    
-    if (selectedType === 'keyboard') {
-        //generateWebcamFrame(keyboardSettings);
-    } else {
-        safeUpdateRiveProperties(webcamSettings);
-    }
-});
-
-
 $("#saveAppSource").on('click', () => { 
     if(!canAddSource) return;
 
     if(existingSource) {
-        const currentSettings = getCurrentSettings();
-        //streamlabsOBS.v1.Sources.updateSource({id: existingSource, name: title});
-        streamlabsOBS.v1.Sources.setAppSourceSettings(existingSource, JSON.stringify(currentSettings));
+        const sourceDisplayName = selectedShape === 'rectangle' ? 'Rectangle Frame' : 
+                     selectedShape === 'circle' ? 'Circle Frame' : 
+                     selectedShape === 'polygon' ? 'Polygon Frame' :
+                     selectedShape === 'star' ? 'Star Frame' : 'Webcam Frame';
+
+        streamlabsOBS.v1.Sources.updateSource({id: existingSource, name: sourceDisplayName});
+        streamlabsOBS.v1.Sources.setAppSourceSettings(existingSource, JSON.stringify(webcamSettings));
         streamlabsOBS.v1.App.navigate('Editor');
         existingSource = null;
     }
@@ -455,32 +482,13 @@ $("#downloadMask").on('click', () => {
     maskCanvas.height = size;
     
     // Get current settings
-    const settings = getCurrentSettings();
+    const settings = webcamSettings;
+    const shape = settings.shape || 'rectangle';
     const rotation = settings.rotation || 0;
     const borderRadius = settings.borderRadius || 10;
-    const color = settings.color || '#ffffff';
-    const strokeWidth = settings.strokeWidth || 5;
     const aspectRatio = settings.aspectRatio || '16:9';
-    
-    // Calculate frame dimensions based on aspect ratio
-    let frameWidth, frameHeight;
-    switch(aspectRatio) {
-        case '16:9':
-            frameWidth = size * 0.8;
-            frameHeight = frameWidth * (9/16);
-            break;
-        case '4:3':
-            frameWidth = size * 0.8;
-            frameHeight = frameWidth * (3/4);
-            break;
-        case '1:1':
-            frameWidth = size * 0.8;
-            frameHeight = frameWidth;
-            break;
-        default:
-            frameWidth = size * 0.8;
-            frameHeight = frameWidth * (9/16);
-    }
+    const outerRadius = settings.outerRadius || 50;
+    const points = settings.points || 5;
     
     // Clear canvas with transparent background
     ctx.clearRect(0, 0, size, size);
@@ -488,24 +496,178 @@ $("#downloadMask").on('click', () => {
     // Move to center and apply rotation
     ctx.save();
     ctx.translate(size / 2, size / 2);
-    ctx.rotate((rotation * Math.PI) / 180);
+    if(rotation !== 0 ) {
+        ctx.rotate((rotation * Math.PI) / 180);
+    }
     
-    // Draw the frame shape
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = strokeWidth;
-    
-    // Draw rounded rectangle
-    const x = -frameWidth / 2;
-    const y = -frameHeight / 2;
+    // Draw the frame shape based on shape type
+    ctx.fillStyle = '#ffffff';
     
     ctx.beginPath();
-    ctx.roundRect(x, y, frameWidth, frameHeight, borderRadius);
-    ctx.fill();
     
-    if (strokeWidth > 0) {
-        ctx.stroke();
+    if (shape === 'circle') {
+        // Draw circle
+        const radius = size * 0.4; // 40% of canvas size
+        ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+        
+    } else if (shape === 'polygon') {
+        // Draw polygon based on number of points with rounded corners
+        const radius = size * 0.4;
+        const angleStep = (2 * Math.PI) / points;
+        const cornerRadius = Math.min(borderRadius, radius * 0.2); // Limit corner radius
+        
+        if (cornerRadius > 0 && points >= 3) {
+            // Draw polygon with rounded corners
+            const vertices = [];
+            for (let i = 0; i < points; i++) {
+                // Rotate by -90 degrees to put first vertex at top
+                const angle = i * angleStep - Math.PI / 2;
+                vertices.push({
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius
+                });
+            }
+            
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            
+            for (let i = 0; i < points; i++) {
+                const current = vertices[i];
+                const next = vertices[(i + 1) % points];
+                const prev = vertices[(i - 1 + points) % points];
+                
+                // Calculate vectors
+                const v1 = { x: current.x - prev.x, y: current.y - prev.y };
+                const v2 = { x: next.x - current.x, y: next.y - current.y };
+                
+                // Normalize vectors
+                const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+                const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+                
+                if (len1 > 0) { v1.x /= len1; v1.y /= len1; }
+                if (len2 > 0) { v2.x /= len2; v2.y /= len2; }
+                
+                // Calculate control points for rounded corner
+                const offset = Math.min(cornerRadius, len1 * 0.4, len2 * 0.4);
+                const cp1 = { x: current.x - v1.x * offset, y: current.y - v1.y * offset };
+                const cp2 = { x: current.x + v2.x * offset, y: current.y + v2.y * offset };
+                
+                if (i === 0) {
+                    ctx.moveTo(cp1.x, cp1.y);
+                } else {
+                    ctx.lineTo(cp1.x, cp1.y);
+                }
+                
+                ctx.quadraticCurveTo(current.x, current.y, cp2.x, cp2.y);
+            }
+            ctx.closePath();
+        } else {
+            // Fallback to sharp corners
+            // Rotate by -90 degrees to put first vertex at top
+            const firstAngle = -Math.PI / 2;
+            ctx.moveTo(Math.cos(firstAngle) * radius, Math.sin(firstAngle) * radius);
+            for (let i = 1; i < points; i++) {
+                const angle = i * angleStep - Math.PI / 2;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+        }
+        
+    } else if (shape === 'star') {
+        // Draw star shape with rounded corners
+        const outerRadiusActual = size * 0.4;
+        const innerRadiusActual = outerRadiusActual * 0.5;
+        const angleStep = Math.PI / points;
+        const cornerRadius = Math.min(borderRadius, innerRadiusActual * 0.3); // Limit corner radius
+        
+        if (cornerRadius > 0 && points >= 3) {
+            // Draw star with rounded corners
+            const vertices = [];
+            for (let i = 0; i < points * 2; i++) {
+                // Rotate by -90 degrees to put first outer point at top
+                const angle = i * angleStep - Math.PI / 2;
+                const radius = i % 2 === 0 ? outerRadiusActual : innerRadiusActual;
+                vertices.push({
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius
+                });
+            }
+            
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            
+            for (let i = 0; i < vertices.length; i++) {
+                const current = vertices[i];
+                const next = vertices[(i + 1) % vertices.length];
+                const prev = vertices[(i - 1 + vertices.length) % vertices.length];
+                
+                // Calculate vectors
+                const v1 = { x: current.x - prev.x, y: current.y - prev.y };
+                const v2 = { x: next.x - current.x, y: next.y - current.y };
+                
+                // Normalize vectors
+                const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+                const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+                
+                if (len1 > 0) { v1.x /= len1; v1.y /= len1; }
+                if (len2 > 0) { v2.x /= len2; v2.y /= len2; }
+                
+                // Calculate control points for rounded corner
+                const offset = Math.min(cornerRadius, len1 * 0.3, len2 * 0.3);
+                const cp1 = { x: current.x - v1.x * offset, y: current.y - v1.y * offset };
+                const cp2 = { x: current.x + v2.x * offset, y: current.y + v2.y * offset };
+                
+                if (i === 0) {
+                    ctx.moveTo(cp1.x, cp1.y);
+                } else {
+                    ctx.lineTo(cp1.x, cp1.y);
+                }
+                
+                ctx.quadraticCurveTo(current.x, current.y, cp2.x, cp2.y);
+            }
+            ctx.closePath();
+        } else {
+            // Fallback to sharp corners
+            // Rotate by -90 degrees to put first outer point at top
+            const firstAngle = -Math.PI / 2;
+            ctx.moveTo(Math.cos(firstAngle) * outerRadiusActual, Math.sin(firstAngle) * outerRadiusActual);
+            for (let i = 1; i < points * 2; i++) {
+                const angle = i * angleStep - Math.PI / 2;
+                const radius = i % 2 === 0 ? outerRadiusActual : innerRadiusActual;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+        }
+        
+    } else {
+        // Default to rectangle with aspect ratio
+        let frameWidth, frameHeight;
+        switch(aspectRatio) {
+            case '16:9':
+                frameWidth = size * 0.95;
+                frameHeight = frameWidth * (9/16);
+                break;
+            case '4:3':
+                frameWidth = size * 0.95;
+                frameHeight = frameWidth * (3/4);
+                break;
+            case '1:1':
+                frameWidth = size * 0.95;
+                frameHeight = frameWidth;
+                break;
+            default:
+                frameWidth = size * 0.95;
+                frameHeight = frameWidth * (9/16);
+        }
+        
+        const x = -frameWidth / 2;
+        const y = -frameHeight / 2;
+        ctx.roundRect(x, y, frameWidth, frameHeight, borderRadius * 0.5);
     }
+    
+    ctx.fill();
     
     ctx.restore();
     
@@ -520,7 +682,20 @@ $("#downloadMask").on('click', () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'webcam-frame-mask.png';
+        
+        // Create descriptive filename based on shape
+        let filename = 'webcam-frame-mask';
+        if (shape === 'circle') {
+            filename = 'webcam-circle-mask';
+        } else if (shape === 'polygon') {
+            filename = `webcam-${points}gon-mask`;
+        } else if (shape === 'star') {
+            filename = `webcam-${points}star-mask`;
+        } else {
+            filename = `webcam-rectangle-${aspectRatio.replace(':', 'x')}-mask`;
+        }
+        
+        link.download = filename + '.png';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -535,7 +710,7 @@ function showAlert(element, title, content) {
     $(element).find('.alert-content').text(content);
 }
 
-function updateStep3Instructions() {
+function updateStep2Instructions() {
     const saveButtonVisible = $('#saveAppSource').is(':visible');
     const createButtonVisible = $('#addAppSource').is(':visible');
     
@@ -555,81 +730,56 @@ function updateStep3Instructions() {
 }
 
 function switchCanvas() {
-    // Handle step 2 canvases
+    // Canvas switching is no longer needed since we only have webcam frames
+    // Keep this function for potential future use with different shapes
     const webcamCanvas = document.getElementById('webcamCanvas');
-    const keyboardCanvas = document.getElementById('keyboardCanvas');
+    const webcamCanvasStep2 = document.getElementById('webcamCanvasStep2');
     
-    // Handle step 3 canvases
-    const webcamCanvasStep3 = document.getElementById('webcamCanvasStep3');
-    const keyboardCanvasStep3 = document.getElementById('keyboardCanvasStep3');
-    
-    if (selectedType === 'keyboard') {
-        // Step 2
-        if (webcamCanvas && keyboardCanvas) {
-            webcamCanvas.style.display = 'none';
-            keyboardCanvas.style.display = 'block';
-        }
-        // Step 3
-        if (webcamCanvasStep3 && keyboardCanvasStep3) {
-            webcamCanvasStep3.style.display = 'none';
-            keyboardCanvasStep3.style.display = 'block';
-        }
-    } else {
-        // Step 2
-        if (webcamCanvas && keyboardCanvas) {
-            webcamCanvas.style.display = 'block';
-            keyboardCanvas.style.display = 'none';
-        }
-        // Step 3
-        if (webcamCanvasStep3 && keyboardCanvasStep3) {
-            webcamCanvasStep3.style.display = 'block';
-            keyboardCanvasStep3.style.display = 'none';
-        }
+    if (webcamCanvas) {
+        webcamCanvas.style.display = 'block';
+    }
+    if (webcamCanvasStep2) {
+        webcamCanvasStep2.style.display = 'block';
     }
 }
 
 function forceCanvasRender() {
-    if (selectedType === 'keyboard') {
-        // Render on keyboard canvases
-        const canvas2 = document.getElementById('keyboardCanvas');
-        const canvas3 = document.getElementById('keyboardCanvasStep3');
-        
-        if (canvas2 && canvas2.offsetParent) {
-            //generateWebcamFrame(keyboardSettings);
-            console.log('Forced canvas render for keyboard step 2');
-        }
-        if (canvas3 && canvas3.offsetParent) {
-            //generateWebcamFrame(keyboardSettings);
-            console.log('Forced canvas render for keyboard step 3');
-        }
-    } else {
-        // Render on webcam canvases
-        const canvas2 = document.getElementById('webcamCanvas');
-        const canvas3 = document.getElementById('webcamCanvasStep3');
-        
-        // Clean up existing instances more safely
-        if (riveInstances.length > 0) {
-            console.log('Cleaning up existing Rive instances');
-            riveInstances.forEach((instance, index) => {
-                try {
-                    if (instance && typeof instance.cleanup === 'function') {
-                        instance.cleanup();
-                    } else if (instance && typeof instance.stop === 'function') {
-                        instance.stop();
-                    }
-                } catch (cleanupError) {
-                    console.warn(`Error cleaning up Rive instance ${index}:`, cleanupError);
+    // Render on webcam canvases
+    const canvas2 = document.getElementById('webcamCanvas');
+    const canvas3 = document.getElementById('webcamCanvasStep2');
+    
+    // Show spinners before creating instances
+    if (canvas2) {
+        const spinner2 = canvas2.parentElement.querySelector('sl-spinner');
+        if (spinner2) spinner2.style.display = 'block';
+    }
+    if (canvas3) {
+        const spinner3 = canvas3.parentElement.querySelector('sl-spinner');
+        if (spinner3) spinner3.style.display = 'block';
+    }
+    
+    // Clean up existing instances more safely
+    if (riveInstances.length > 0) {
+        console.log('Cleaning up existing Rive instances');
+        riveInstances.forEach((instance, index) => {
+            try {
+                if (instance && typeof instance.cleanup === 'function') {
+                    instance.cleanup();
+                } else if (instance && typeof instance.stop === 'function') {
+                    instance.stop();
                 }
-            });
-            riveInstances = [];
-            
-            // Wait a bit for cleanup to complete
-            setTimeout(() => {
-                createNewRiveInstances(canvas2, canvas3);
-            }, 200);
-        } else {
+            } catch (cleanupError) {
+                console.warn(`Error cleaning up Rive instance ${index}:`, cleanupError);
+            }
+        });
+        riveInstances = [];
+        
+        // Wait a bit for cleanup to complete
+        setTimeout(() => {
             createNewRiveInstances(canvas2, canvas3);
-        }
+        }, 200);
+    } else {
+        createNewRiveInstances(canvas2, canvas3);
     }
 }
 
@@ -642,40 +792,61 @@ function createNewRiveInstances(canvas2, canvas3) {
     }
     
     if (canvas3 && canvas3.offsetParent && canvas3.style.display !== 'none') {
-        visibleCanvases.push({ canvas: canvas3, step: 3 });
+        visibleCanvases.push({ canvas: canvas3, step: 2 });
     }
     
     // Only create instances for visible canvases
     visibleCanvases.forEach(({ canvas, step }) => {
         try {
-            console.log(`Creating Rive instance for webcam step ${step}`);
+            console.log(`Creating Rive instance for ${webcamSettings['shape']} frame step ${step}`);
             const instance = loadWebcamRiveFile(canvas, webcamSettings);
             riveInstances.push(instance);
+            
+            // Hide spinner after instance is created
+            const spinner = canvas.parentElement.querySelector('sl-spinner');
+            if (spinner) spinner.style.display = 'none';
         } catch (error) {
-            console.error(`Error creating Rive instance for step ${step}:`, error);
+            console.error(`Error creating Rive instance for ${webcamSettings['shape']} framestep ${step}:`, error);
+            
+            // Hide spinner even on error
+            const spinner = canvas.parentElement.querySelector('sl-spinner');
+            if (spinner) spinner.style.display = 'none';
         }
     });
 }
 
 // Wizard Functions
 function initWizard() {
-    // Step 1: Type selection
-    $('.option-card').on('click', function() {
-        $('.option-card').removeClass('selected');
-        $(this).addClass('selected');
-        selectedType = $(this).data('type');
-        window.selectedType = selectedType; // Update global reference
-        $('#step1Next').prop('disabled', false);
+    // Shape selection via icon buttons
+    $('sl-icon-button[data-shape]').on('click', function() {
+        const shape = $(this).data('shape');
         
-        // Update type display in later steps
-        $('#selectedType, #selectedType2').text(selectedType);
+        // Remove 'selected' state from all shape buttons
+        $('sl-icon-button[data-shape]').each(function() {
+            const iconName = $(this).attr('name');
+            const baseIconName = iconName.replace('-half', '');
+            $(this).attr('name', baseIconName);
+        });
+        
+        // Add 'selected' state to clicked button
+        const currentIconName = $(this).attr('name');
+        $(this).attr('name', currentIconName + '-half');
+        
+        // Update shape selection
+        selectedShape = shape;
+        window.selectedShape = selectedShape;
+        webcamSettings.shape = selectedShape;
+        
+        // Update UI and recreate Rive instances
+        updateUI(webcamSettings, existingSource ? 'existing' : 'new');
+        setTimeout(() => {
+            forceCanvasRender();
+        }, 150);
     });
     
     // Navigation handlers
     $('#step1Next').on('click', () => goToStep(2));
     $('#step2Back').on('click', () => goToStep(1));
-    $('#step2Next').on('click', () => goToStep(3));
-    $('#step3Back').on('click', () => goToStep(2));
 }
 
 function goToStep(step) {
@@ -697,37 +868,17 @@ function goToStep(step) {
     currentStep = step;
     
     // Update UI with current settings when moving between steps
-    const currentSettings = getCurrentSettings();
-    updateUI(currentSettings, existingSource ? 'existing' : 'new');
+    updateUI(webcamSettings, existingSource ? 'existing' : 'new');
     
-    // Update step 3 instructions based on available actions
-    if (step === 3) {
-        updateStep3Instructions();
-        // Force canvas rendering for step 3
-        setTimeout(() => {
-            forceCanvasRender();
-        }, 150);
-    }
-    
-    // Generate frame when we reach step 2 or 3
+    // Update step 2 instructions based on available actions
     if (step >= 2) {
-        // Switch to appropriate canvas based on selected type
+        updateStep2Instructions();
         switchCanvas();
         
-        // Small delay to ensure canvas is rendered
-        if (selectedType === 'keyboard') {
-                //generateWebcamFrame(keyboardSettings);
-        } else {
-            if (riveInstances.length === 0) {
-                const canvas = document.getElementById('webcamCanvas');
-                if (canvas) {
-                    riveInstances.push(loadWebcamRiveFile(canvas, webcamSettings));
-                }
-            } else {
-                safeUpdateRiveProperties(webcamSettings);
-            }
-        }
     }
+    setTimeout(() => {
+        forceCanvasRender();
+    }, 150);
 }
 
 // Scene Selection Modal Functions
@@ -736,14 +887,6 @@ function openSceneSelectionModal() {
     $('#sceneModal').addClass('active');
     selectedSceneId = null;
     $('#sceneModalConfirm').removeClass('visible');
-    
-    // Update modal text based on selected type
-    const typeText = selectedType === 'keyboard' ? 'Keyboard Overlay' : 
-                    selectedType === 'webcam' ? 'Webcam Frame' : 'source';
-    const capitalizedType = selectedType === 'keyboard' ? 'Keyboard Overlay' : 
-                           selectedType === 'webcam' ? 'Webcam Frame' : 'Source';
-    $('#sourceTypeInSubtitle').text(typeText.toLowerCase());
-    $('#sourceTypeInButton').text(capitalizedType);
     
     // Load scenes and populate modal
     loadScenesData().then(() => {
@@ -816,14 +959,14 @@ async function confirmAddToScene() {
     if (!selectedSceneId) return;
     
     try {
-        const sourceDisplayName = selectedType === 'keyboard' ? 'Keyboard Overlay' : 
-                                 selectedType === 'webcam' ? 'Webcam Frame' : 'Webcam Frame';
+        const sourceDisplayName = selectedShape === 'rectangle' ? 'Rectangle Frame' : 
+                     selectedShape === 'circle' ? 'Circle Frame' : 
+                     selectedShape === 'polygon' ? 'Polygon Frame' :
+                     selectedShape === 'star' ? 'Star Frame' : 'Webcam Frame';
 
-        const sourceIDName = selectedType === 'keyboard' ? 'bb-keyboard-overlay' : 
-                                 selectedType === 'webcam' ? 'bb-webcam-frame' : 'bb-webcam-frame';
-        const currentSettings = getCurrentSettings();
+        const sourceIDName = 'bb-webcam-frame'; // Keep the same source ID for consistency
         const source = await streamlabsOBS.v1.Sources.createAppSource(sourceDisplayName, sourceIDName);
-        await streamlabsOBS.v1.Sources.setAppSourceSettings(source.id, JSON.stringify(currentSettings));
+        await streamlabsOBS.v1.Sources.setAppSourceSettings(source.id, JSON.stringify(webcamSettings));
         await streamlabsOBS.v1.Scenes.createSceneItem(selectedSceneId, source.id);
         
         closeSceneSelectionModal();
