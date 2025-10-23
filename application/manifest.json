@@ -1,0 +1,38 @@
+{
+    "version": "0.1",
+    "name": "Create Webcam Frame",
+    "buildPath": "dist/",
+    "permissions": ["slobs.scenes-sources"],
+    "supportedPlatforms": ["twitch", "youtube", "facebook"],
+    "icon": "./images/app-sq.jpg",
+    "sources": [
+      {
+        "type": "browser_source",
+        "name": "Create Webcam Frame",
+        "id": "bb-webcam-frame",
+        "about": {
+          "description": "Customize your own webcam frame.",
+          "bannerImage": "./images/app-icon.jpg"
+        },
+        "file": "index.html",
+        "initialSize": {
+          "type": "absolute",
+          "width": 600,
+          "height": 600
+        },
+        "redirectPropertiesToTopNavSlot": true
+      }
+    ],
+    "pages": [
+      {
+        "slot": "top_nav",
+        "file": "settings.html",
+        "persistent": true,
+        "allowPopout": true,
+        "popOutSize": {
+          "width": 600,
+          "height": 600
+        }
+      }
+    ]
+  }

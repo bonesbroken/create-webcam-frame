@@ -1,0 +1,699 @@
+<!doctype html>
+<html class="sl-theme-dark" style="height: 100%;">
+  <head>
+    <meta charset="utf-8" />
+    <title>User Settings</title>
+    <script src="https://cdn.streamlabs.com/slobs-platform/lib/streamlabs-platform.min.js"></script>
+
+    <style>
+    * {
+      font-family: var(--sl-font-sans);
+      box-sizing: inherit;
+    }
+
+    html {
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: visible;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--sl-color-neutral-50);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #addAppSource, #saveAppSource {
+      box-sizing: border-box;
+    }
+    #appAppSource {
+      flex: 1;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    #group {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    #webcamCanvas {
+      width: 600px;
+      height: 600px;
+      border: 1px solid var(--sl-color-neutral-300);
+    }
+
+    #webcamCanvas, #webcamCanvasStep3 {
+      background-image: 
+        linear-gradient(45deg, #242427 25%, transparent 25%), 
+        linear-gradient(-45deg, #242427 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #242427 75%), 
+        linear-gradient(-45deg, transparent 75%, #242427 75%);
+      background-size: 40px 40px;
+      background-position: 0 0, 0 20px, 20px -20px, -20px 0px;
+    }
+
+    .settings-panel {
+      border-radius: 0.25rem;
+      flex: 1;
+      width: 250px;
+      height: 200px;
+    }
+
+    sl-input {
+      flex: 1;
+    }
+    .setting-group {
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+      align-items: center;
+      box-sizing: border-box;
+
+      & > sl-range {
+        flex: 1;
+      }
+
+      & > sl-color-picker {
+        flex: 1 1 50%;
+      }
+
+      & 
+
+      & > sl-select {
+        flex: 1;
+      }
+
+      & > sl-tooltip {
+        flex: 1;
+      }
+
+      & span {
+        color: var(--sl-color-neutral-600);
+        font-size: var(--sl-font-size-medium);
+        flex: 1;
+
+        & sl-icon {
+          padding-right: 0.25rem; 
+        }
+      }
+
+      & span.expand {
+        flex: 1 1 0%;
+      }
+    }
+
+    .color-picker {
+      padding: 0;
+
+      & > sl-color-picker {
+        flex: none;
+      }
+    }
+    
+    sl-range, sl-select {
+      padding: 0.5rem 0;
+      flex: 1;
+
+      &::part(form-control-label) {
+        color: var(--sl-color-neutral-600);
+      }
+    }
+
+    sl-checkbox {
+      display: block;
+      padding: 0.1rem 0.5rem;
+    }
+
+    sl-details {
+      &::part(base) {
+        border: solid 1px #2b2e37;
+        background-color: #0f1219;
+      }
+    }
+
+    sl-details.custom-icons::part(summary-icon) {
+      /* Disable the expand/collapse animation */
+      rotate: none;
+    }
+
+    sl-color-picker {
+      box-sizing: border-box;
+    }
+
+    .component-image-container {
+      display: flex;
+      align-items: center;
+      flex-grow: 1;
+      gap: 1rem;
+
+      & > sl-button {
+        box-sizing: border-box;
+        flex-grow: 1;
+      }
+    }
+
+    .setting-group-3 {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: center;
+      width: 100%;
+    }
+
+    .alert-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      margin: 2rem;
+      z-index: 10;
+    }
+
+    .close-button {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+    }
+
+    /* Wizard Styles */
+    .wizard-container {
+      width: 100%;
+      background: var(--sl-color-neutral-0);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+
+    .wizard-step {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .wizard-step.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--sl-color-neutral-700);
+    }
+
+    .step-title {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--sl-color-primary-500);
+    }
+
+    .step-subtitle {
+      font-size: 1rem;
+      color: var(--sl-color-neutral-400);
+    }
+
+    .option-grid {
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+      margin: 2rem 0;
+      justify-content: center;
+    }
+
+    .option-card {
+      border: 2px solid var(--sl-color-neutral-300);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: var(--sl-color-neutral-0);
+      color: var(--sl-color-neutral-700);
+      flex: 1;
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    .option-card:hover {
+      border-color: var(--sl-color-primary-500);
+      background: var(--sl-color-primary-50);
+      color: var(--sl-color-neutral-900);
+    }
+
+    .option-card.selected {
+      border-color: var(--sl-color-primary-500);
+      background: var(--sl-color-primary-100);
+      color: var(--sl-color-primary-800);
+    }
+
+    .option-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: var(--sl-color-primary-500);
+    }
+
+    .wizard-navigation {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--sl-color-neutral-300);
+      position: relative;
+    }
+
+    .navigation-buttons {
+      position: absolute;
+      right: 0;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .step-indicator {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .step-number {
+      font-weight: var(--sl-font-weight-light);
+      width: 32px;
+      height: 32px;
+      border-radius: 15%;
+      background: var(--sl-color-neutral-0);
+      border: 1px solid var(--sl-color-neutral-300);
+      color: var(--sl-color-neutral-600);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .step-number.active {
+      background: var(--sl-color-primary-300);
+    border-color: var(--sl-color-primary-300);
+      border-width: 2px;
+      font-weight: var(--sl-font-weight-semibold);
+      color: var(--sl-color-neutral-0);
+    }
+
+    .step-number.previous {
+      background: var(--sl-color-primary-300);
+    border-color: var(--sl-color-primary-300);
+      border-width: 2px;
+      font-weight: var(--sl-font-weight-semibold);
+     
+      color: var(--sl-color-neutral-0);
+    }
+
+    .preview-container {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    .settings-section {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    /* Scene Selection Modal */
+    .scene-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .scene-modal.active {
+      display: flex;
+    }
+
+    .scene-modal-content {
+      background: var(--sl-color-neutral-0);
+      border: 1px solid var(--sl-color-neutral-300);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 800px;
+      width: 90%;
+      max-height: 80%;
+      overflow: hidden;
+      box-shadow: var(--sl-shadow-large);
+    }
+
+    .scene-modal-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .scene-modal-title {
+      font-size: 1.5rem;
+      color: var(--sl-color-primary-500);
+      margin-bottom: 0.5rem;
+    }
+
+    .scene-modal-subtitle {
+      color: var(--sl-color-neutral-600);
+    }
+
+    .scene-selection-container {
+      display: flex;
+      gap: 2rem;
+      height: 400px;
+    }
+
+    .scene-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .column-header {
+      font-weight: bold;
+      color: var(--sl-color-neutral-700);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--sl-color-neutral-300);
+    }
+
+    .scene-list, .source-list {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--sl-color-neutral-300);
+      border-radius: 4px;
+      background: var(--sl-color-neutral-50);
+    }
+
+    .scene-item, .source-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--sl-color-neutral-200);
+      cursor: pointer;
+      transition: background 0.2s ease;
+      color: var(--sl-color-neutral-700);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .scene-item sl-badge {
+      margin-left: 1rem;
+    }
+
+    .scene-item:hover {
+      background: var(--sl-color-neutral-100);
+    }
+
+    .scene-item.active {
+      background: var(--sl-color-primary-50);
+      color: var(--sl-color-primary-700);
+      border-left: 3px solid var(--sl-color-primary-500);
+    }
+
+    .scene-item.selected {
+      background: var(--sl-color-neutral-200);
+      color: var(--sl-color-neutral-1000);
+    }
+
+    .source-item {
+      cursor: default;
+    }
+
+    .scene-modal-actions {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scene-modal-confirm {
+      display: block;
+    }
+
+    .scene-modal-confirm.visible {
+      display: block;
+    }
+    </style>
+  </head>
+  <body>
+    <sl-button id="closeApp" class="close-button" variant="default" size="small" outline>
+      <sl-icon slot="prefix" name="x"></sl-icon>
+    </sl-button>
+    
+    <div class="alert-container">
+      <sl-alert id="generalAlert" variant="warning" duration="10000" countdown="rtl" closable>
+        <sl-icon slot="icon" name="exclamation-triangle"></sl-icon>
+        <strong class="alert-title">Settings deleted!</strong><br />
+        <div class="alert-content">Your Keyboard Settings have been deleted and reset.</div>
+      </sl-alert>
+    </div>
+    <div id="group">
+      <div class="wizard-container">
+        
+        <!-- Step 1: Choose Type -->
+        <div class="wizard-step active" id="step1">
+          <div class="step-header">
+            <h1 class="step-title">Choose your Shape</h1>
+            <p class="step-subtitle">Select the shape of your webcam frame</p>
+          </div>
+          
+          <div class="option-grid">
+            <div class="option-card" data-type="webcam">
+              <div class="option-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="8" y="12" width="32" height="24" rx="3" fill="var(--sl-color-primary-500)" stroke="var(--sl-color-primary-600)" stroke-width="2"/>
+                  <rect x="12" y="16" width="24" height="16" rx="1" fill="var(--sl-color-neutral-0)" stroke="var(--sl-color-primary-400)" stroke-width="1"/>
+                  <circle cx="18" cy="24" r="3" fill="var(--sl-color-primary-500)"/>
+                  <circle cx="30" cy="20" r="1" fill="var(--sl-color-primary-400)"/>
+                </svg>
+              </div>
+              <h3>Rectangle</h3>
+              <p>Create a rectangular (or square) webcam frame with customizable effects</p>
+            </div>
+            <div class="option-card" data-type="webcam">
+              <div class="option-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="24" cy="24" r="16" fill="var(--sl-color-primary-500)" stroke="var(--sl-color-primary-600)" stroke-width="2"/>
+                  <circle cx="24" cy="24" r="11" fill="var(--sl-color-neutral-0)" stroke="var(--sl-color-primary-400)" stroke-width="1"/>
+                  <circle cx="20" cy="22" r="2.5" fill="var(--sl-color-primary-500)"/>
+                  <circle cx="28" cy="20" r="1" fill="var(--sl-color-primary-400)"/>
+                </svg>
+              </div>
+              <h3>Circle</h3>
+              <p>Create a circular webcam frame with customizable effects</p>
+            </div>
+            <div class="option-card" data-type="webcam">
+              <div class="option-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <polygon points="24,8 35,16 35,32 24,40 13,32 13,16" fill="var(--sl-color-primary-500)" stroke="var(--sl-color-primary-600)" stroke-width="2"/>
+                  <polygon points="24,13 31,18.5 31,29.5 24,35 17,29.5 17,18.5" fill="var(--sl-color-neutral-0)" stroke="var(--sl-color-primary-400)" stroke-width="1"/>
+                  <circle cx="21" cy="22" r="2.5" fill="var(--sl-color-primary-500)"/>
+                  <circle cx="27" cy="20" r="1" fill="var(--sl-color-primary-400)"/>
+                </svg>
+              </div>
+              <h3>Polygon</h3>
+              <p>Create a n-sided polygon webcam frame with customizable shapes and effects</p>
+            </div>
+          </div>
+          
+          <div class="wizard-navigation">
+            <div class="step-indicator">
+              <div class="step-number active">1</div>
+              <div class="step-number">2</div>
+              <div class="step-number">3</div>
+            </div>
+            <div class="navigation-buttons">
+              <sl-button id="step1Next" variant="primary" disabled>
+                Next Step <sl-icon slot="suffix" name="arrow-right"></sl-icon>
+              </sl-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Basic Configuration -->
+        <div class="wizard-step" id="step2">
+          <div class="step-header">
+            <h1 class="step-title">Basic Configuration</h1>
+            <p class="step-subtitle">Set up the basic properties for your <span id="selectedType">frame</span></p>
+          </div>
+          
+          <div class="preview-container">
+            <canvas id="webcamCanvas" style="width: 400px; height: 400px;"></canvas>
+            
+            <div class="settings-section">
+              <div class="setting-group color-picker">
+                <sl-tooltip content="Border Color">
+                  <sl-color-picker format="hex" id="color" class="colorInput" label="Color 1" size="small" no-format-toggle="true"></sl-color-picker>
+                </sl-tooltip>
+                <sl-tooltip content="Border Color">
+                  <sl-input id="colorInput" placeholder="ff0000" size="small" maxlength="6"></sl-input>
+                </sl-tooltip>
+                <sl-tooltip content="Border Width">
+                  <sl-input id="strokeWidth" size="small" type="number" min="0" max="360" value="15" step="1"></sl-input>
+                </sl-tooltip>
+               </div>
+              
+              <div class="setting-group">
+                <span>Aspect Ratio</span>
+                <sl-select id="aspectRatio" size="small">
+                  <sl-option value="16:9">16:9</sl-option>
+                  <sl-option value="4:3">4:3</sl-option>
+                  <sl-option value="1:1">1:1</sl-option>
+                </sl-select>
+              </div>
+              
+              <div class="setting-group range">
+                <span>Rotation</span>
+                <sl-range id="rotation" min="0" max="180" step="1"></sl-range>
+              </div>
+              <div class="setting-group">
+                <span>Corner Radius</span>
+                <sl-input id="borderRadius" size="small" type="number" min="0" max="360" value="10" step="5"></sl-input>
+              </div>
+               
+              
+            </div>
+          </div>
+          
+          <div class="wizard-navigation">
+            <div class="step-indicator">
+              <div class="step-number completed">1</div>
+              <div class="step-number active">2</div>
+              <div class="step-number">3</div>
+            </div>
+            <div class="navigation-buttons">
+              <sl-button id="step2Back" variant="neutral" outline="false">
+                <sl-icon slot="prefix" name="arrow-left"></sl-icon> Back
+              </sl-button>
+              <sl-button id="step2Next" variant="primary">
+                Next Step <sl-icon slot="suffix" name="arrow-right"></sl-icon>
+              </sl-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Advanced Settings -->
+        <div class="wizard-step" id="step3">
+          <div class="step-header">
+            <h1 class="step-title">Advanced Settings</h1>
+            <p class="step-subtitle">Fine-tune your <span id="selectedType2">frame</span> with advanced options</p>
+          </div>
+          
+          <div class="preview-container">
+            <canvas id="webcamCanvasStep3" style="width: 400px; height: 400px; border: 1px solid var(--sl-color-neutral-300);"></canvas>
+            
+            <div class="settings-section">
+              <!-- Settings section intentionally left blank for step 3 -->
+              <div id="step3Instructions" style="color: var(--sl-color-neutral-600); text-align: center;">
+                <p>Preview your final result to the left.</p>
+                <p id="actionInstructions">Use the button below to create your source.</p>
+              </div>
+              
+              <!-- Webcam Mask Section -->
+              <div id="webcamMaskSection" style="border-top: 1px solid var(--sl-color-neutral-300);">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                  <h3 style="color: var(--sl-color-neutral-700); margin-bottom: 0.5rem;">
+                    Webcam Mask
+                  </h3>
+                  <p style="color: var(--sl-color-neutral-600); font-size: var(--sl-font-size-small);">
+                    Using a Webcam Mask will mask your webcam video feed to the same shape as your Webcam Frame. <sl-tooltip content="Add the &quot;Image/Mask Blend&quot; filter to your webcam video source, and select your downloaded file.">
+                      <sl-icon name="info-circle" label="Learn More" style="margin-left: 0.5rem; cursor: help; color: var(--sl-color-neutral-500);"></sl-icon>
+                    </sl-tooltip>
+                  </p>
+                  
+                </div>
+                <div style="display: flex; justify-content: center;">
+                  <sl-button id="downloadMask" variant="default" size="medium">
+                    <sl-icon slot="prefix" name="download"></sl-icon>Download Webcam Mask
+                  </sl-button>
+                </div>
+              </div>
+              
+              <!-- Hidden elements for functionality -->
+              <div class="setting-group-3" style="display: none">
+                <sl-spinner id="spinner" style="display: none"></sl-spinner>
+                <div class="component-image-container">
+                  <sl-button class="image-upload" variant="default" size="small">
+                    <sl-icon slot="prefix" name="upload"></sl-icon>Upload Image
+                  </sl-button>
+                </div>
+              </div>
+              <input class="image-input" style="display: none" type="file" accept=".jpg, .jpeg, .png">
+            </div>
+          </div>
+          
+          <div class="wizard-navigation">
+            <div class="step-indicator">
+              <div class="step-number completed">1</div>
+              <div class="step-number completed">2</div>
+              <div class="step-number active">3</div>
+            </div>
+            <div class="navigation-buttons">
+              <sl-button id="step3Back" variant="neutral" outline="false">
+                <sl-icon slot="prefix" name="arrow-left"></sl-icon> Back
+              </sl-button>
+              <div class="buttons">
+                <sl-button id="saveAppSource" size="medium" variant="primary" class="homepage-element">
+                  <sl-icon slot="prefix" name="floppy"></sl-icon>Save Existing
+                </sl-button>
+                <sl-button id="addAppSource" size="medium" variant="success" class="homepage-element">
+                  <sl-icon slot="prefix" name="plus-square"></sl-icon> Add New
+                </sl-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Scene Selection Modal -->
+    <div id="sceneModal" class="scene-modal">
+      <div class="scene-modal-content">
+        <div class="scene-modal-header">
+          <h2 class="scene-modal-title">Choose Source Location</h2>
+          <p class="scene-modal-subtitle">Add <span id="sourceTypeInSubtitle">source</span> to your scene. Select from your existing scenes below.</p>
+        </div>
+        
+        <div class="scene-selection-container">
+          <div class="scene-column">
+            <div class="column-header">Scenes</div>
+            <div class="scene-list" id="sceneList">
+              <!-- Scenes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <div class="scene-modal-actions">
+          <sl-button id="cancelSceneModal" variant="neutral" size="medium">
+            Cancel
+          </sl-button>
+          <sl-button id="confirmAddSource" class="scene-modal-confirm" variant="success" size="medium">
+            <sl-icon slot="prefix" name="plus-square"></sl-icon>Add <span id="sourceTypeInButton">Source</span>
+          </sl-button>
+        </div>
+      </div>
+    </div>
+    
+  </body>
+</html>
