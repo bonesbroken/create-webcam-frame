@@ -273,8 +273,8 @@ function updateUI(settings, newSource) {
     }
 }
 
-$('#color').off('sl-change');
-$('#color').on('sl-change', event => {
+$('#color').off('sl-input');
+$('#color').on('sl-input', event => {
     const val = event.target && event.target.value;
     if (val === undefined) return;
     

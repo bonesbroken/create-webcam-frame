@@ -1,7 +1,7 @@
 {
   "name": "application",
   "version": "1.1.7",
-  "description": "Create Webcam Frame for the Streamlabs App Store",
+  "description": "Create Webcam Frame App for the Streamlabs App Store",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

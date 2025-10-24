@@ -62,7 +62,7 @@ export function updateRiveProperties(instance, settings, transparent = false) {
                 if(transparent) {
                     vmi.color('fillColor').value = hexToArgbInt(settings['fillColor'], 0x00);
                 } else {
-                    vmi.color('fillColor').value = hexToArgbInt(settings['fillColor']);
+                    vmi.color('fillColor').value = hexToArgbInt(settings['fillColor'], 0x89);
                 }
             }
             if (input.name === 'aspectRatio' && settings['aspectRatio'] !== undefined) {

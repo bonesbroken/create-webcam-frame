@@ -488,8 +488,8 @@
         <!-- Step 1: Basic Configuration -->
         <div class="wizard-step active" id="step1">
           <div class="step-header">
-            <h1 class="step-title">Basic Configuration</h1>
-            <p class="step-subtitle">Choose your shape and set up the basic properties for your webcam frame</p>
+            <h1 class="step-title">Create Webcam Frame</h1>
+            <p class="step-subtitle">Choose your webcam frame's shape and adjust the basic properties</p>
           </div>
           
           <div class="preview-container">
@@ -521,7 +521,7 @@
                   <sl-input id="colorInput" placeholder="ff0000" size="small" maxlength="6"></sl-input>
                 </sl-tooltip>
                 <sl-tooltip content="Border Width">
-                  <sl-input id="strokeWidth" size="small" type="number" min="0" max="360" value="15" step="5"></sl-input>
+                  <sl-input id="strokeWidth" size="small" type="number" min="0" max="360" value="20" step="10"></sl-input>
                 </sl-tooltip>
                </div>
               <div class="setting-group">
@@ -569,8 +569,8 @@
         <!-- Step 2: Advanced Settings -->
         <div class="wizard-step" id="step2">
           <div class="step-header">
-            <h1 class="step-title">Advanced Settings</h1>
-            <p class="step-subtitle">Fine-tune your webcam frame with advanced options</p>
+            <h1 class="step-title">Final Result</h1>
+            <p class="step-subtitle">Preview your webcam frame below or go back and make adjustments.</p>
           </div>
           
           <div class="preview-container">
@@ -582,7 +582,6 @@
             <div class="settings-section">
               <!-- Settings section intentionally left blank for step 2 -->
               <div id="step2Instructions" style="color: var(--sl-color-neutral-600); text-align: center;">
-                <p>Preview your final result to the left.</p>
                 <p id="actionInstructions">Use the button below to create your source.</p>
               </div>
               
