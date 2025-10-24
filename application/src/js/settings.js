@@ -1,5 +1,5 @@
 import $ from "jquery";
-import { defaultWebcamFrameSettings, loadWebcamRiveFile, updateRiveProperties } from './utils.js';
+import { defaultWebcamFrameSettings, loadWebcamRiveFile, updateRiveProperties, hexToArgbInt } from './utils.js';
 import '@shoelace-style/shoelace/dist/themes/dark.css';
 import '@shoelace-style/shoelace/dist/components/button/button.js';
 import '@shoelace-style/shoelace/dist/components/icon/icon.js';
@@ -160,9 +160,6 @@ async function initApp() {
         streamlabsOBS = window.streamlabsOBS;
         streamlabsOBS.apiReady.then(() => {
             canAddSource = true;
-            //console.log(streamlabsOBS);
-            //console.log(streamlabs);
-            
         });
 
         streamlabsOBS.v1.App.onNavigation(nav => {
@@ -210,6 +207,7 @@ async function initApp() {
 
 
 function updateUI(settings, newSource) {
+    console.log('Updating UI with settings:', settings, 'New source:', newSource);
     if (!settings) return;
     $('#color').val(settings["color"] || webcamSettings["color"]);
     $('#colorInput').val(settings["color"] || webcamSettings["color"]);
@@ -220,6 +218,21 @@ function updateUI(settings, newSource) {
     $('#outerRadius').val(Number(settings["outerRadius"] || webcamSettings["outerRadius"]));
     $('#points').val(Number(settings["points"] || webcamSettings["points"]));
     $('#aspectRatio').val(settings["aspectRatio"] || webcamSettings["aspectRatio"]);
+
+    // Update shape button selection states
+    $('sl-icon-button[data-shape]').each(function() {
+        const buttonShape = $(this).data('shape');
+        const iconName = $(this).attr('name');
+        const baseIconName = iconName.replace('-half', '');
+        
+        if (buttonShape === settings.shape) {
+            // Add 'selected' state to current shape button
+            $(this).attr('name', baseIconName + '-half');
+        } else {
+            // Remove 'selected' state from other buttons
+            $(this).attr('name', baseIconName);
+        }
+    });
 
     // Hide/show settings based on shape
     if (settings.shape === 'rectangle') {
@@ -469,221 +482,128 @@ $('#screenshot').on('click', () => {
 });
 
 // Download mask functionality
-$("#downloadMask").on('click', () => {
-    console.log('Creating mask from settings');
+$("#downloadMask").on('click', async () => {
+    console.log('Creating mask from canvas using createImageBitmap');
     
-    // Create a new canvas for mask generation
-    const maskCanvas = document.createElement('canvas');
-    const ctx = maskCanvas.getContext('2d');
-    
-    // Set high resolution for better quality
-    const size = 1024;
-    maskCanvas.width = size;
-    maskCanvas.height = size;
-    
-    // Get current settings
-    const settings = webcamSettings;
-    const shape = settings.shape || 'rectangle';
-    const rotation = settings.rotation || 0;
-    const borderRadius = settings.borderRadius || 10;
-    const aspectRatio = settings.aspectRatio || '16:9';
-    const outerRadius = settings.outerRadius || 50;
-    const points = settings.points || 5;
-    
-    // Clear canvas with transparent background
-    ctx.clearRect(0, 0, size, size);
-    
-    // Move to center and apply rotation
-    ctx.save();
-    ctx.translate(size / 2, size / 2);
-    if(rotation !== 0 ) {
-        ctx.rotate((rotation * Math.PI) / 180);
-    }
-    
-    // Draw the frame shape based on shape type
-    ctx.fillStyle = '#ffffff';
-    
-    ctx.beginPath();
-    
-    if (shape === 'circle') {
-        // Draw circle
-        const radius = size * 0.4; // 40% of canvas size
-        ctx.arc(0, 0, radius, 0, 2 * Math.PI);
-        
-    } else if (shape === 'polygon') {
-        // Draw polygon based on number of points with rounded corners
-        const radius = size * 0.4;
-        const angleStep = (2 * Math.PI) / points;
-        const cornerRadius = Math.min(borderRadius, radius * 0.2); // Limit corner radius
-        
-        if (cornerRadius > 0 && points >= 3) {
-            // Draw polygon with rounded corners
-            const vertices = [];
-            for (let i = 0; i < points; i++) {
-                // Rotate by -90 degrees to put first vertex at top
-                const angle = i * angleStep - Math.PI / 2;
-                vertices.push({
-                    x: Math.cos(angle) * radius,
-                    y: Math.sin(angle) * radius
-                });
-            }
-            
-            ctx.moveTo(vertices[0].x, vertices[0].y);
-            
-            for (let i = 0; i < points; i++) {
-                const current = vertices[i];
-                const next = vertices[(i + 1) % points];
-                const prev = vertices[(i - 1 + points) % points];
-                
-                // Calculate vectors
-                const v1 = { x: current.x - prev.x, y: current.y - prev.y };
-                const v2 = { x: next.x - current.x, y: next.y - current.y };
-                
-                // Normalize vectors
-                const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-                const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-                
-                if (len1 > 0) { v1.x /= len1; v1.y /= len1; }
-                if (len2 > 0) { v2.x /= len2; v2.y /= len2; }
-                
-                // Calculate control points for rounded corner
-                const offset = Math.min(cornerRadius, len1 * 0.4, len2 * 0.4);
-                const cp1 = { x: current.x - v1.x * offset, y: current.y - v1.y * offset };
-                const cp2 = { x: current.x + v2.x * offset, y: current.y + v2.y * offset };
-                
-                if (i === 0) {
-                    ctx.moveTo(cp1.x, cp1.y);
-                } else {
-                    ctx.lineTo(cp1.x, cp1.y);
-                }
-                
-                ctx.quadraticCurveTo(current.x, current.y, cp2.x, cp2.y);
-            }
-            ctx.closePath();
-        } else {
-            // Fallback to sharp corners
-            // Rotate by -90 degrees to put first vertex at top
-            const firstAngle = -Math.PI / 2;
-            ctx.moveTo(Math.cos(firstAngle) * radius, Math.sin(firstAngle) * radius);
-            for (let i = 1; i < points; i++) {
-                const angle = i * angleStep - Math.PI / 2;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                ctx.lineTo(x, y);
-            }
-            ctx.closePath();
+    try {
+        const canvas = document.getElementById('webcamCanvasStep2') || document.getElementById('webcamCanvas');
+
+        if (!canvas) {
+            console.error('No canvas found');
+            showAlert('#generalAlert', 'Export Error', 'No canvas available for export.');
+            return;
         }
+
+        // Set canvas dimensions for export
+        const exportCanvas = document.createElement('canvas');
+        const exportCtx = exportCanvas.getContext('2d');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
         
-    } else if (shape === 'star') {
-        // Draw star shape with rounded corners
-        const outerRadiusActual = size * 0.4;
-        const innerRadiusActual = outerRadiusActual * 0.5;
-        const angleStep = Math.PI / points;
-        const cornerRadius = Math.min(borderRadius, innerRadiusActual * 0.3); // Limit corner radius
+        // Read pixels from WebGL canvas
+        const gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
         
-        if (cornerRadius > 0 && points >= 3) {
-            // Draw star with rounded corners
-            const vertices = [];
-            for (let i = 0; i < points * 2; i++) {
-                // Rotate by -90 degrees to put first outer point at top
-                const angle = i * angleStep - Math.PI / 2;
-                const radius = i % 2 === 0 ? outerRadiusActual : innerRadiusActual;
-                vertices.push({
-                    x: Math.cos(angle) * radius,
-                    y: Math.sin(angle) * radius
-                });
-            }
-            
-            ctx.moveTo(vertices[0].x, vertices[0].y);
-            
-            for (let i = 0; i < vertices.length; i++) {
-                const current = vertices[i];
-                const next = vertices[(i + 1) % vertices.length];
-                const prev = vertices[(i - 1 + vertices.length) % vertices.length];
-                
-                // Calculate vectors
-                const v1 = { x: current.x - prev.x, y: current.y - prev.y };
-                const v2 = { x: next.x - current.x, y: next.y - current.y };
-                
-                // Normalize vectors
-                const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-                const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-                
-                if (len1 > 0) { v1.x /= len1; v1.y /= len1; }
-                if (len2 > 0) { v2.x /= len2; v2.y /= len2; }
-                
-                // Calculate control points for rounded corner
-                const offset = Math.min(cornerRadius, len1 * 0.3, len2 * 0.3);
-                const cp1 = { x: current.x - v1.x * offset, y: current.y - v1.y * offset };
-                const cp2 = { x: current.x + v2.x * offset, y: current.y + v2.y * offset };
-                
-                if (i === 0) {
-                    ctx.moveTo(cp1.x, cp1.y);
-                } else {
-                    ctx.lineTo(cp1.x, cp1.y);
-                }
-                
-                ctx.quadraticCurveTo(current.x, current.y, cp2.x, cp2.y);
-            }
-            ctx.closePath();
-        } else {
-            // Fallback to sharp corners
-            // Rotate by -90 degrees to put first outer point at top
-            const firstAngle = -Math.PI / 2;
-            ctx.moveTo(Math.cos(firstAngle) * outerRadiusActual, Math.sin(firstAngle) * outerRadiusActual);
-            for (let i = 1; i < points * 2; i++) {
-                const angle = i * angleStep - Math.PI / 2;
-                const radius = i % 2 === 0 ? outerRadiusActual : innerRadiusActual;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-        }
-        
-    } else {
-        // Default to rectangle with aspect ratio
-        let frameWidth, frameHeight;
-        switch(aspectRatio) {
-            case '16:9':
-                frameWidth = size * 0.95;
-                frameHeight = frameWidth * (9/16);
-                break;
-            case '4:3':
-                frameWidth = size * 0.95;
-                frameHeight = frameWidth * (3/4);
-                break;
-            case '1:1':
-                frameWidth = size * 0.95;
-                frameHeight = frameWidth;
-                break;
-            default:
-                frameWidth = size * 0.95;
-                frameHeight = frameWidth * (9/16);
-        }
-        
-        const x = -frameWidth / 2;
-        const y = -frameHeight / 2;
-        ctx.roundRect(x, y, frameWidth, frameHeight, borderRadius * 0.5);
-    }
-    
-    ctx.fill();
-    
-    ctx.restore();
-    
-    // Download the mask
-    maskCanvas.toBlob(function(blob) {
-        if (!blob) {
-            console.error('Failed to create mask blob');
-            showAlert('#generalAlert', 'Export Error', 'Failed to create mask image.');
+        if (!gl) {
+            console.error('Failed to get WebGL2 context');
+            showAlert('#generalAlert', 'Export Error', 'WebGL2 context not available.');
             return;
         }
         
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
+        // Check if context is lost
+        if (gl.isContextLost()) {
+            console.error('WebGL2 context is lost');
+            showAlert('#generalAlert', 'Export Error', 'WebGL2 context is lost.');
+            return;
+        }
         
-        // Create descriptive filename based on shape
+        // Force a render if needed - check if Rive instance is available
+        if (riveInstances.length > 0 && riveInstances[0]) {
+            console.log('Forcing Rive render before export');
+            try {
+                const vmi = riveInstances[0].viewModelInstance;
+                vmi.color('fillColor').value = hexToArgbInt(`#FFFFFF`);
+                vmi.color('color').value = hexToArgbInt(webcamSettings['color'], 0x00);
+                // Force Rive to render one more frame
+                if (typeof riveInstances[0].advance === 'function') {
+                    riveInstances[0].advance(0);
+                }
+                if (typeof riveInstances[0].draw === 'function') {
+                    riveInstances[0].draw();
+                }
+            } catch (renderError) {
+                console.warn('Error forcing Rive render:', renderError);
+            }
+        }
+        
+        // Ensure we're reading from the correct framebuffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        
+        const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        
+        // Check if we got any non-transparent pixels
+        let hasContent = false;
+        for (let i = 3; i < pixels.length; i += 4) { // Check alpha channel
+            if (pixels[i] > 0) {
+                hasContent = true;
+                break;
+            }
+        }
+        
+        if (!hasContent) {
+            console.warn('Canvas appears to be empty or fully transparent');
+            showAlert('#generalAlert', 'Export Warning', 'Canvas appears to be empty. Make sure the frame is rendered.');
+            // Continue anyway in case there's content we can't detect
+        }
+        
+        // Create ImageData and flip Y coordinate manually (WebGL has flipped Y)
+        const flippedPixels = new Uint8ClampedArray(pixels.length);
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Flip the image data vertically
+        for (let y = 0; y < height; y++) {
+            const srcRowStart = y * width * 4;
+            const destRowStart = (height - 1 - y) * width * 4;
+            for (let x = 0; x < width * 4; x++) {
+                flippedPixels[destRowStart + x] = pixels[srcRowStart + x];
+            }
+        }
+        
+        const imageData = new ImageData(flippedPixels, canvas.width, canvas.height);
+        
+        // Put the correctly oriented image data on the 2D canvas
+        exportCtx.putImageData(imageData, 0, 0);
+        
+        // Alternative: Try direct canvas.toDataURL() as fallback
+        let capturedImage;
+        try {
+            capturedImage = exportCanvas.toDataURL('image/png');
+            console.log('Export canvas toDataURL successful');
+            
+            // Check if the data URL has actual content (not just a blank image)
+            if (capturedImage.length < 1000) { // Very small data URLs are usually blank
+                console.warn('Export canvas data URL is suspiciously small, trying direct canvas export');
+                capturedImage = canvas.toDataURL('image/png');
+            }
+        } catch (exportError) {
+            console.error('Error converting export canvas to data URL:', exportError);
+            // Fallback to direct canvas export
+            capturedImage = canvas.toDataURL('image/png');
+        }
+        
+        console.log('Final image data URL length:', capturedImage.length);
+        
+        
+        const link = document.createElement('a');
+        link.href = capturedImage;
+        
+        // Generate filename based on current settings
+        const settings = webcamSettings;
+        const shape = settings.shape || 'rectangle';
+        const points = settings.points || 5;
+        const aspectRatio = settings.aspectRatio || '16:9';
+        
         let filename = 'webcam-frame-mask';
         if (shape === 'circle') {
             filename = 'webcam-circle-mask';
@@ -696,12 +616,21 @@ $("#downloadMask").on('click', () => {
         }
         
         link.download = filename + '.png';
+        
+        // Trigger download
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        console.log('Mask download completed');
-    }, 'image/png');
+        
+        console.log('Canvas mask download completed:', filename + '.png');
+        const vmi = riveInstances[0].viewModelInstance;
+        vmi.color('color').value = hexToArgbInt(webcamSettings['color']);
+        vmi.color('fillColor').value = hexToArgbInt(webcamSettings['fillColor']);
+        
+    } catch (error) {
+        console.error('Error creating mask from canvas:', error);
+        showAlert('#generalAlert', 'Export Error', 'Failed to create mask from canvas.');
+    }
 });
 
 function showAlert(element, title, content) {
@@ -745,16 +674,16 @@ function switchCanvas() {
 
 function forceCanvasRender() {
     // Render on webcam canvases
-    const canvas2 = document.getElementById('webcamCanvas');
-    const canvas3 = document.getElementById('webcamCanvasStep2');
+    const canvas = document.getElementById('webcamCanvas');
+    const canvas2 = document.getElementById('webcamCanvasStep2');
     
     // Show spinners before creating instances
-    if (canvas2) {
-        const spinner2 = canvas2.parentElement.querySelector('sl-spinner');
+    if (canvas) {
+        const spinner2 = canvas.parentElement.querySelector('sl-spinner');
         if (spinner2) spinner2.style.display = 'block';
     }
-    if (canvas3) {
-        const spinner3 = canvas3.parentElement.querySelector('sl-spinner');
+    if (canvas2) {
+        const spinner3 = canvas2.parentElement.querySelector('sl-spinner');
         if (spinner3) spinner3.style.display = 'block';
     }
     
@@ -776,23 +705,23 @@ function forceCanvasRender() {
         
         // Wait a bit for cleanup to complete
         setTimeout(() => {
-            createNewRiveInstances(canvas2, canvas3);
+            createNewRiveInstances(canvas, canvas2);
         }, 200);
     } else {
-        createNewRiveInstances(canvas2, canvas3);
+        createNewRiveInstances(canvas, canvas2);
     }
 }
 
 // Helper function to create new Rive instances
-function createNewRiveInstances(canvas2, canvas3) {
+function createNewRiveInstances(canvas, canvas2) {
     const visibleCanvases = [];
+    
+    if (canvas && canvas.offsetParent && canvas.style.display !== 'none') {
+        visibleCanvases.push({ canvas: canvas, step: 2 });
+    }
     
     if (canvas2 && canvas2.offsetParent && canvas2.style.display !== 'none') {
         visibleCanvases.push({ canvas: canvas2, step: 2 });
-    }
-    
-    if (canvas3 && canvas3.offsetParent && canvas3.style.display !== 'none') {
-        visibleCanvases.push({ canvas: canvas3, step: 2 });
     }
     
     // Only create instances for visible canvases
@@ -821,17 +750,6 @@ function initWizard() {
     $('sl-icon-button[data-shape]').on('click', function() {
         const shape = $(this).data('shape');
         
-        // Remove 'selected' state from all shape buttons
-        $('sl-icon-button[data-shape]').each(function() {
-            const iconName = $(this).attr('name');
-            const baseIconName = iconName.replace('-half', '');
-            $(this).attr('name', baseIconName);
-        });
-        
-        // Add 'selected' state to clicked button
-        const currentIconName = $(this).attr('name');
-        $(this).attr('name', currentIconName + '-half');
-        
         // Update shape selection
         selectedShape = shape;
         window.selectedShape = selectedShape;
@@ -847,6 +765,9 @@ function initWizard() {
     // Navigation handlers
     $('#step1Next').on('click', () => goToStep(2));
     $('#step2Back').on('click', () => goToStep(1));
+    setTimeout(() => {
+        forceCanvasRender();
+    }, 150);
 }
 
 function goToStep(step) {
