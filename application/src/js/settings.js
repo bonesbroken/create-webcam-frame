@@ -885,8 +885,7 @@ async function confirmAddToScene() {
                      selectedShape === 'polygon' ? 'Polygon Frame' :
                      selectedShape === 'star' ? 'Star Frame' : 'Webcam Frame';
 
-        const sourceIDName = 'bb-webcam-frame'; // Keep the same source ID for consistency
-        const source = await streamlabsOBS.v1.Sources.createAppSource(sourceDisplayName, sourceIDName);
+        const source = await streamlabsOBS.v1.Sources.createAppSource(sourceDisplayName, 'bb-webcam-frame');
         await streamlabsOBS.v1.Sources.setAppSourceSettings(source.id, JSON.stringify(webcamSettings));
         await streamlabsOBS.v1.Scenes.createSceneItem(selectedSceneId, source.id);
         
