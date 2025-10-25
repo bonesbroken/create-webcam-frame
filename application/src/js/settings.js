@@ -625,7 +625,7 @@ $("#downloadMask").on('click', async () => {
         console.log('Canvas mask download completed:', filename + '.png');
         const vmi = riveInstances[0].viewModelInstance;
         vmi.color('color').value = hexToArgbInt(webcamSettings['color']);
-        vmi.color('fillColor').value = hexToArgbInt(webcamSettings['fillColor']);
+        vmi.color('fillColor').value = hexToArgbInt(webcamSettings['fillColor'], 0x89);
         
     } catch (error) {
         console.error('Error creating mask from canvas:', error);
